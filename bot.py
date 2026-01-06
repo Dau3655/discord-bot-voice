@@ -1,47 +1,67 @@
 import discord
 import os
-from discord.ext import commands
-from keep_alive import keep_alive 
+import asyncio
+from discord.ext import commands, tasks # 1. 多匯入 tasks
+from keep_alive import keep_alive
 
-TOKEN = os.getenv("DISCORD_TOKEN") 
-
-# 語音頻道ID
-VOICE_CHANNEL_ID = 911302671863021648 
+TOKEN = os.getenv("DISCORD_TOKEN")
+# 你的語音頻道 ID
+VOICE_CHANNEL_ID = 911302671863021648
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# === 新增功能：斷線重連巡邏隊 ===
+# 每 3 分鐘執行一次檢查，確保機器人永遠在語音頻道內
+@tasks.loop(minutes=3) 
+async def check_voice_connection():
+    # 確保機器人核心已經準備好，才開始檢查
+    if not bot.is_ready():
+        return
+
+    channel = bot.get_channel(VOICE_CHANNEL_ID)
+    if not channel:
+        print("巡邏隊報告：找不到目標頻道，無法執行重連。")
+        return
+
+    # 檢查機器人目前是否連接在該伺服器的語音頻道
+    voice_client = discord.utils.get(bot.voice_clients, guild=channel.guild)
+    
+    # 情況 A: 機器人根本不在任何語音頻道 -> 立刻加入
+    if not voice_client:
+        print("巡邏隊發現：機器人不在頻道內，正在嘗試重新加入...")
+        try:
+            await channel.connect()
+            print("重連成功！掛機繼續！")
+        except Exception as e:
+            print(f"重連失敗: {e}")
+    
+    # 情況 B: 機器人連著，但連錯房間了 -> 強制移動過去
+    elif voice_client.channel.id != VOICE_CHANNEL_ID:
+        print("巡邏隊發現：機器人跑錯房間了，正在移動中...")
+        try:
+            await voice_client.move_to(channel)
+        except Exception as e:
+            print(f"移動失敗: {e}")
+            
+    # 情況 C: 一切正常 -> 默默守護，不做任何事
+    else:
+        pass
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} 上線了！')
     
-    # 防呆 1: 先檢查頻道存不存在
-    channel = bot.get_channel(VOICE_CHANNEL_ID)
-    if not channel:
-        print(f"錯誤：找不到 ID 為 {VOICE_CHANNEL_ID} 的語音頻道，請檢查 ID 是否正確。")
-        return  # 找不到就停下來，不要硬執行
+    # 啟動巡邏隊 (確保只啟動一次)
+    if not check_voice_connection.is_running():
+        check_voice_connection.start()
+        print("斷線重連巡邏隊已啟動！24小時監控中...")
 
-    # 防呆 2: 檢查機器人是否已經在語音頻道裡了 (避免重複加入導致崩潰)
-    if bot.voice_clients:
-        print("檢測到機器人已經在語音頻道中，跳過加入步驟。")
-        return
-
-    # 防呆 3: 嘗試加入，如果失敗(例如沒權限、滿員)則捕捉錯誤，不要讓程式掛掉
-    try:
-        await channel.connect()
-        print(f"成功加入語音頻道：{channel.name}")
-    except discord.ClientException:
-        print("錯誤：機器人似乎已經連線了 (ClientException)")
-    except discord.errors.Forbidden:
-        print("錯誤：機器人沒有權限加入這個頻道 (請檢查 Discord 頻道權限設定)")
-    except Exception as e:
-        print(f"發生未知的錯誤，無法加入頻道：{e}")
-
-
+# 保持網頁喚醒
 keep_alive()
 
 if TOKEN:
     bot.run(TOKEN)
 else:
-    print("錯誤：找不到 Token，請確認環境變數設定正確！")
+    print("錯誤：找不到 Token")
