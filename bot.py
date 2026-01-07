@@ -25,8 +25,8 @@ async def say(ctx, *, msg):
     await ctx.send(msg)
 
 # === 功能 1: 綜合狀態顯示 (實況燈 + 運作時間 + 趣味文字) ===
-# 每 5 分鐘更新一次狀態
-@tasks.loop(minutes=5)
+# 每 3 分鐘更新一次狀態
+@tasks.loop(minutes=3)
 async def status_task():
     # 1. 計算運作時間
     now = datetime.datetime.now()
