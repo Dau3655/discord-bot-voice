@@ -18,6 +18,12 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # 記錄啟動時間 (用來計算 uptime)
 start_time = datetime.datetime.now()
 
+# === 新功能: 腹語術 (讓機器人幫你說話) ===
+@bot.command()
+async def say(ctx, *, msg):
+    await ctx.message.delete() # 刪除你的指令，做到神不知鬼不覺
+    await ctx.send(msg)
+
 # === 功能 1: 綜合狀態顯示 (實況燈 + 運作時間 + 趣味文字) ===
 # 每 5 分鐘更新一次狀態
 @tasks.loop(minutes=5)
