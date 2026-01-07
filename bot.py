@@ -3,6 +3,7 @@ import os
 import asyncio
 from discord.ext import commands, tasks # 1. 多匯入 tasks
 from keep_alive import keep_alive
+import random
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 # 你的語音頻道 ID
@@ -11,6 +12,24 @@ VOICE_CHANNEL_ID = 911302671863021648
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# === 新增功能：變色龍狀態 (每 10 分鐘換一次狀態) ===
+@tasks.loop(minutes=10)
+async def status_task():
+    # 這裡可以自訂你想讓機器人顯示的狀態
+    statuses = [
+        f"幫 {len(bot.voice_clients)} 個伺服器顧家",
+        "計算掛機時間中...",
+        "練習 24 小時不眨眼",
+        "在紫花海發呆",
+        "監控大家的睡眠時間",
+        "數羊... 1隻... 2隻..."
+    ]
+    # 隨機選一個
+    status = random.choice(statuses)
+    # 設定狀態 (Game=正在玩, Watching=正在看, Listening=正在聽)
+    await bot.change_presence(activity=discord.Game(name=status))
+
 
 # === 新增功能：斷線重連巡邏隊 ===
 # 每 3 分鐘執行一次檢查，確保機器人永遠在語音頻道內
@@ -65,3 +84,17 @@ if TOKEN:
     bot.run(TOKEN)
 else:
     print("錯誤：找不到 Token")
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} 上線了！')
+
+    # 啟動斷線重連巡邏隊
+    if not check_voice_connection.is_running():
+        check_voice_connection.start()
+        print("斷線重連巡邏隊已啟動！")
+        
+    # 啟動變色龍狀態 (新增這段)
+    if not status_task.is_running():
+        status_task.start()
+        print("變色龍狀態已啟動！")
