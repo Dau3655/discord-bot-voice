@@ -1,41 +1,60 @@
 import discord
 import os
 import asyncio
-from discord.ext import commands, tasks # 1. 多匯入 tasks
-from keep_alive import keep_alive
+import datetime
 import random
+from discord.ext import commands, tasks
+from keep_alive import keep_alive
 
+# === 設定區 ===
 TOKEN = os.getenv("DISCORD_TOKEN")
-# 你的語音頻道 ID
-VOICE_CHANNEL_ID = 911302671863021648
+VOICE_CHANNEL_ID = 911302671863021648  # 你的語音頻道 ID
 
+# === 機器人初始化 ===
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# === 新增功能：變色龍狀態 (每 10 分鐘換一次狀態) ===
-@tasks.loop(minutes=10)
+# 記錄啟動時間 (用來計算 uptime)
+start_time = datetime.datetime.now()
+
+# === 功能 1: 綜合狀態顯示 (實況燈 + 運作時間 + 趣味文字) ===
+# 每 5 分鐘更新一次狀態
+@tasks.loop(minutes=5)
 async def status_task():
-    # 這裡可以自訂你想讓機器人顯示的狀態
+    # 1. 計算運作時間
+    now = datetime.datetime.now()
+    uptime = now - start_time
+    days = uptime.days
+    hours, remainder = divmod(uptime.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    uptime_str = f"{days}天 {hours}小時 {minutes}分"
+
+    # 2. 設定狀態清單 (包含技術資訊 & 趣味文字)
     statuses = [
-        f"幫 {len(bot.voice_clients)} 個伺服器顧家",
-        "計算掛機時間中...",
+        f"已持續運作: {uptime_str}",        # 顯示時間
+        f"守護紫花海: {len(bot.voice_clients)} 個頻道", # 顯示連線數
+        "系統狀態: 🟢 良好",
+        "掛機積分計算中...",
         "練習 24 小時不眨眼",
-        "在紫花海發呆",
         "監控大家的睡眠時間",
         "數羊... 1隻... 2隻..."
     ]
-    # 隨機選一個
-    status = random.choice(statuses)
-    # 設定狀態 (Game=正在玩, Watching=正在看, Listening=正在聽)
-    await bot.change_presence(activity=discord.Game(name=status))
+    
+    # 3. 隨機選一個並顯示 (使用 Streaming 模式顯示紫燈)
+    current_status = random.choice(statuses)
+    
+    await bot.change_presence(
+        activity=discord.Streaming(
+            name=current_status, 
+            url="https://www.twitch.tv/discord" # 這是騙 Discord 顯示紫燈用的連結
+        )
+    )
 
-
-# === 新增功能：斷線重連巡邏隊 ===
-# 每 3 分鐘執行一次檢查，確保機器人永遠在語音頻道內
+# === 功能 2: 斷線重連巡邏隊 (核心掛機功能) ===
+# 每 3 分鐘檢查一次，確保機器人永遠在語音頻道內
 @tasks.loop(minutes=3) 
 async def check_voice_connection():
-    # 確保機器人核心已經準備好，才開始檢查
     if not bot.is_ready():
         return
 
@@ -64,18 +83,24 @@ async def check_voice_connection():
         except Exception as e:
             print(f"移動失敗: {e}")
             
-    # 情況 C: 一切正常 -> 默默守護，不做任何事
+    # 情況 C: 一切正常
     else:
         pass
 
+# === 啟動區 ===
 @bot.event
 async def on_ready():
     print(f'{bot.user} 上線了！')
     
-    # 啟動巡邏隊 (確保只啟動一次)
+    # 1. 啟動斷線重連巡邏隊
     if not check_voice_connection.is_running():
         check_voice_connection.start()
-        print("斷線重連巡邏隊已啟動！24小時監控中...")
+        print("✅ 斷線重連巡邏隊已啟動！")
+
+    # 2. 啟動狀態變換 (實況燈)
+    if not status_task.is_running():
+        status_task.start()
+        print("✅ 變色龍實況狀態已啟動！")
 
 # 保持網頁喚醒
 keep_alive()
@@ -84,17 +109,3 @@ if TOKEN:
     bot.run(TOKEN)
 else:
     print("錯誤：找不到 Token")
-
-@bot.event
-async def on_ready():
-    print(f'{bot.user} 上線了！')
-
-    # 啟動斷線重連巡邏隊
-    if not check_voice_connection.is_running():
-        check_voice_connection.start()
-        print("斷線重連巡邏隊已啟動！")
-        
-    # 啟動變色龍狀態 (新增這段)
-    if not status_task.is_running():
-        status_task.start()
-        print("變色龍狀態已啟動！")
