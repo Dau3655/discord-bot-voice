@@ -16,7 +16,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # 記錄啟動時間 (用來計算 uptime)
-start_time = datetime.datetime.now()
+start_time = datetime.datetime(2026, 1, 8, 9, 0, 0)
 
 # === 新功能: 腹語術 (讓機器人幫你說話) ===
 @bot.command()
@@ -36,10 +36,21 @@ async def status_task():
     minutes, seconds = divmod(remainder, 60)
     uptime_str = f"{days}天 {hours}小時 {minutes}分"
 
-    # 2. 設定狀態清單 (包含技術資訊 & 趣味文字)
+    # === [新插入] 計算目前語音頻道裡有幾個人 ===
+    total_users = 0
+    # 遍歷機器人所在的每一個語音頻道
+    for vc in bot.voice_clients:
+        # vc.channel.members 是頻道裡的所有成員
+        # 我們減 1 是為了扣掉「機器人自己」，只算活人
+        # 如果只有機器人自己，就顯示 0
+        count = len(vc.channel.members) - 1
+        if count > 0:
+            total_users += count
+
+
+    # 2. 設定基礎狀態清單 
     statuses = [
         f"已持續運作: {uptime_str}",        # 顯示時間
-        f"守護紫花海: {len(bot.voice_clients)} 個頻道", # 顯示連線數
         "系統狀態: 🟢 良好",
         f"CPU 溫度: {random.randint(45, 65)}°C",
         "練習 24 小時不眨眼",
@@ -48,8 +59,17 @@ async def status_task():
         "正在Kobe",
         "正在幫阿鈞達守羌",
         "有路口",
-        "目標是全國制霸"
+        "目標是全國制霸",
+        "月經來"
+
     ]
+
+    if total_users == 0:
+        statuses.append("獨自守護紫花海 🌸")
+    else:
+        # 有人的時候 (熱鬧模式)
+        statuses.append(f"和{total_users}個賤種守護紫花海")
+        
     
     # 3. 隨機選一個並顯示 (使用 Streaming 模式顯示紫燈)
     current_status = random.choice(statuses)
