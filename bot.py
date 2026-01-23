@@ -61,7 +61,6 @@ async def status_task():
         "有路口",
         "目標是全國制霸",
         "月經來"
-
     ]
 
     if total_users == 0:

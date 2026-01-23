@@ -8,7 +8,7 @@ def home():
     return "I'm alive! 機器人存活確認。"
 
 def run():
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8000)
 
 def keep_alive():
     t = Thread(target=run)
