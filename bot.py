@@ -2,13 +2,13 @@ import discord
 import os
 import asyncio
 import datetime
-import random
+import random as rd
 from discord.ext import commands, tasks
 from keep_alive import keep_alive
 
 # === 設定區 ===
 TOKEN = os.getenv("DISCORD_TOKEN")
-VOICE_CHANNEL_ID = 911302671863021648  # 你的語音頻道 ID
+VOICE_CHANNEL_ID = 1013035308805275658  # 你的語音頻道 ID
 
 # === 機器人初始化 ===
 intents = discord.Intents.default()
@@ -52,8 +52,8 @@ async def status_task():
     statuses = [
         f"已持續運作: {uptime_str}",        # 顯示時間
         "系統狀態: 🟢 良好",
-        f"CPU 溫度: {random.randint(45, 65)}°C",
-        "練習 24 小時不眨眼",
+        f"CPU 溫度: {rd.randint(45, 65)}°C",
+        "下班倒數計時中 ⏳",
         "研究怎麼統治世界",
         "正在跟 Siri 吵架",
         "正在Kobe",
@@ -61,6 +61,9 @@ async def status_task():
         "有路口",
         "目標是全國制霸",
         "月經來"
+        f"記憶體佔用率: {rd.randint(30, 85)}% 🧠",
+        f"深蹲第 {rd.randint(15, 50)} 下... 腿快斷了",
+        f"台股技術分析模型訓練中 (Epoch {rd.randint(1, 100)}/100)",
     ]
 
     if total_users == 0:
@@ -71,7 +74,7 @@ async def status_task():
         
     
     # 3. 隨機選一個並顯示 (使用 Streaming 模式顯示紫燈)
-    current_status = random.choice(statuses)
+    current_status = rd.choice(statuses)
     
     await bot.change_presence(
         activity=discord.Streaming(
